@@ -1,95 +1,104 @@
 package utils
 
 import (
-	"crypto/rand"
 	"fmt"
-	"math/big"
+	"math/rand"
+	"notification-server/database"
 	"notification-server/models"
-	"sync"
 	"time"
 )
 
-// OTPStore handles in-memory storage of OTPs
-type OTPStore struct {
-	otps map[string]*models.OTP
-	mu   sync.RWMutex
-}
-
-var store *OTPStore
-var once sync.Once
-
-// GetOTPStore returns a singleton instance of OTPStore
-func GetOTPStore() *OTPStore {
-	once.Do(func() {
-		store = &OTPStore{
-			otps: make(map[string]*models.OTP),
-		}
-		// Start cleanup goroutine
-		go store.cleanupExpiredOTPs()
-	})
-	return store
-}
-
-// GenerateOTP generates a 6-digit OTP code
+// GenerateOTP creates a 6-digit random OTP
 func GenerateOTP() (string, error) {
-	max := big.NewInt(1000000)
-	n, err := rand.Int(rand.Reader, max)
-	if err != nil {
-		return "", err
-	}
-	return fmt.Sprintf("%06d", n.Int64()), nil
+	rand.Seed(time.Now().UnixNano())
+	otp := fmt.Sprintf("%06d", rand.Intn(1000000))
+	return otp, nil
 }
 
-// Save stores an OTP for a given email
-func (s *OTPStore) Save(email, code string, expiryMinutes int) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
-	s.otps[email] = &models.OTP{
-		Email:     email,
-		Code:      code,
-		ExpiresAt: time.Now().Add(time.Duration(expiryMinutes) * time.Minute),
-		CreatedAt: time.Now(),
-	}
-}
-
-// Verify checks if the OTP is valid for the given email
-func (s *OTPStore) Verify(email, code string) bool {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-
-	otp, exists := s.otps[email]
-	if !exists {
-		return false
+// SaveOTP stores the OTP in the database with expiration (minutes)
+func SaveOTP(email, otp string, expireMinutes int) error {
+	expiresAt := time.Now().Add(time.Duration(expireMinutes) * time.Minute)
+	user := &models.User{
+		Email:       email,
+		OTPCode:     otp,
+		OTPExpires:  expiresAt,
+		OTPVerified: false,
 	}
 
-	if otp.IsExpired() {
-		return false
+	return database.GetDB().Create(user).Error
+}
+
+// SaveOrUpdateOTP stores or updates the OTP in the database with expiration (minutes)
+func SaveOrUpdateOTP(email, otp string, expireMinutes int) error {
+	expiresAt := time.Now().Add(time.Duration(expireMinutes) * time.Minute)
+
+	// Try to update existing user
+	result := database.GetDB().Model(&models.User{}).Where("email = ?", email).Updates(map[string]interface{}{
+		"otp_code":     otp,
+		"otp_expires":  expiresAt,
+		"otp_verified": false,
+	})
+
+	if result.Error != nil {
+		return result.Error
 	}
 
-	return otp.Code == code
-}
-
-// Delete removes an OTP for a given email
-func (s *OTPStore) Delete(email string) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
-	delete(s.otps, email)
-}
-
-// cleanupExpiredOTPs periodically removes expired OTPs
-func (s *OTPStore) cleanupExpiredOTPs() {
-	ticker := time.NewTicker(5 * time.Minute)
-	defer ticker.Stop()
-
-	for range ticker.C {
-		s.mu.Lock()
-		for email, otp := range s.otps {
-			if otp.IsExpired() {
-				delete(s.otps, email)
-			}
+	// If no rows updated, create new user
+	if result.RowsAffected == 0 {
+		user := &models.User{
+			Email:       email,
+			OTPCode:     otp,
+			OTPExpires:  expiresAt,
+			OTPVerified: false,
 		}
-		s.mu.Unlock()
+		return database.GetDB().Create(user).Error
 	}
+
+	return nil
+}
+
+// CheckOTP checks the OTP for a given email without marking as verified
+func CheckOTP(email, code string) bool {
+	var user models.User
+	err := database.GetDB().
+		Where("email = ? AND otp_code = ?", email, code).
+		Order("created_at desc").
+		First(&user).Error
+
+	if err != nil {
+		// OTP not found
+		return false
+	}
+
+	if user.OTPVerified {
+		// Already verified
+		return false
+	}
+
+	if time.Now().After(user.OTPExpires) {
+		// Expired OTP
+		return false
+	}
+
+	return true
+}
+
+// VerifyAndMarkOTP checks the OTP and marks it as verified if valid
+func VerifyAndMarkOTP(email, code string) bool {
+	if !CheckOTP(email, code) {
+		return false
+	}
+
+	// Mark OTP as verified
+	database.GetDB().Model(&models.User{}).Where("email = ?", email).Update("otp_verified", true)
+	return true
+}
+
+// DeleteOTP clears OTP fields for the user (cleanup)
+func DeleteOTP(email string) error {
+	return database.GetDB().Model(&models.User{}).Where("email = ?", email).Updates(map[string]interface{}{
+		"otp_code":     "",
+		"otp_expires":  time.Time{},
+		"otp_verified": true,
+	}).Error
 }

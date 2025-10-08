@@ -51,17 +51,17 @@ func LoadConfig() *Config {
 			Host:     getEnv("DB_HOST", "localhost"),
 			Port:     getEnv("DB_PORT", "5432"),
 			User:     getEnv("DB_USER", "postgres"),
-			Password: getEnv("DB_PASSWORD", ""),
-			DBName:   getEnv("DB_NAME", "notification_db"),
+			Password: getEnv("DB_PASSWORD", "password"),
+			DBName:   getEnv("DB_NAME", "onboarding_app"),
 			SSLMode:  getEnv("DB_SSLMODE", "disable"),
 		},
 		Email: EmailConfig{
 			SMTPHost:  getEnv("SMTP_HOST", "smtp.gmail.com"),
 			SMTPPort:  getEnv("SMTP_PORT", "587"),
-			Username:  getEnv("SMTP_USERNAME", ""),
-			Password:  getEnv("SMTP_PASSWORD", ""),
-			FromEmail: getEnv("SMTP_FROM_EMAIL", ""),
-			FromName:  getEnv("SMTP_FROM_NAME", "Notification Service"),
+			Username:  getEnv("SMTP_USERNAME", "bishtdaksh77@gmail.com"),
+			Password:  getEnv("SMTP_PASSWORD", "irle kjkt soxg nxvt"),
+			FromEmail: getEnv("SMTP_FROM_EMAIL", "bishtdaksh77@gmail.com"),
+			FromName:  getEnv("SMTP_FROM_NAME", "GoPro"),
 		},
 	}
 }

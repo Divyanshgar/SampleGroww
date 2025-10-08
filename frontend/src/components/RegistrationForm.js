@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+ import React, { useState } from 'react';
 import axios from 'axios';
 
 function RegistrationForm({ email, onSuccess, onBack }) {
@@ -12,6 +12,7 @@ function RegistrationForm({ email, onSuccess, onBack }) {
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [resendLoading, setResendLoading] = useState(false);
 
   const handleChange = (e) => {
     setFormData({
@@ -41,6 +42,20 @@ function RegistrationForm({ email, onSuccess, onBack }) {
       );
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleResend = async () => {
+    setError('');
+    setResendLoading(true);
+    try {
+      await axios.post('/api/v1/auth/request-otp', { email });
+      // Go back to OTP verification step
+      onBack();
+    } catch (err) {
+      setError(err.response?.data?.error || 'Failed to resend OTP');
+    } finally {
+      setResendLoading(false);
     }
   };
 
@@ -155,6 +170,18 @@ function RegistrationForm({ email, onSuccess, onBack }) {
         >
           Back
         </button>
+
+        {error === 'Invalid or expired OTP' && (
+          <button
+            type="button"
+            className="btn btn-link"
+            onClick={handleResend}
+            disabled={resendLoading}
+            style={{ marginTop: '10px', fontSize: '14px' }}
+          >
+            {resendLoading ? 'Resending...' : 'Resend OTP'}
+          </button>
+        )}
       </form>
 
       <div className="info-message" style={{ marginTop: '20px', fontSize: '12px' }}>

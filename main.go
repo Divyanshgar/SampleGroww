@@ -46,10 +46,10 @@ func main() {
 	router.Static("/static", "./frontend/build/static")
 	router.StaticFile("/favicon.ico", "./frontend/build/favicon.ico")
 	router.StaticFile("/manifest.json", "./frontend/build/manifest.json")
-	
+
 	// Setup API routes
 	routes.SetupRoutes(router, emailService)
-	
+
 	// Serve React app for all other routes (SPA fallback)
 	router.NoRoute(func(c *gin.Context) {
 		c.File("./frontend/build/index.html")

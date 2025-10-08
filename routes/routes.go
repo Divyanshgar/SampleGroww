@@ -23,6 +23,7 @@ func SetupRoutes(router *gin.Engine, emailService *services.EmailService) {
 		{
 			auth.POST("/request-otp", notificationHandler.RequestOTP)
 			auth.POST("/verify-otp", notificationHandler.VerifyOTPAndRegister)
+			auth.POST("/verify-otp-only", notificationHandler.VerifyOTP)
 		}
 
 		// Notification routes

@@ -1,8 +1,12 @@
 import React, { useState, useRef, useEffect } from 'react';
+import axios from 'axios';
 
 function OTPVerification({ email, onVerified, onBack }) {
   const [otp, setOtp] = useState(['', '', '', '', '', '']);
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [resendLoading, setResendLoading] = useState(false);
+  const [resendDisabled, setResendDisabled] = useState(false);
   const inputRefs = useRef([]);
 
   useEffect(() => {
@@ -52,13 +56,45 @@ function OTPVerification({ email, onVerified, onBack }) {
 
   const isOTPComplete = otp.every(digit => digit !== '');
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (isOTPComplete) {
+      setError('');
+      setLoading(true);
       const otpString = otp.join('');
-      // Store OTP in sessionStorage to use in registration
-      sessionStorage.setItem('otp', otpString);
-      onVerified();
+      try {
+        await axios.post('/api/v1/auth/verify-otp-only', {
+          email,
+          otp: otpString,
+        });
+        // Store OTP in sessionStorage to use in registration
+        sessionStorage.setItem('otp', otpString);
+        onVerified();
+      } catch (err) {
+        setError(err.response?.data?.error || 'Invalid OTP');
+        return; // Prevent moving to next step on error
+      } finally {
+        setLoading(false);
+      }
+    }
+  };
+
+  const handleResend = async () => {
+    setError('');
+    setResendLoading(true);
+    setResendDisabled(true);
+    try {
+      await axios.post('/api/v1/auth/request-otp', { email });
+      // Clear OTP inputs
+      setOtp(['', '', '', '', '', '']);
+      inputRefs.current[0]?.focus();
+      // Enable resend after 30 seconds
+      setTimeout(() => setResendDisabled(false), 30000);
+    } catch (err) {
+      setError(err.response?.data?.error || 'Failed to resend OTP');
+      setResendDisabled(false);
+    } finally {
+      setResendLoading(false);
     }
   };
 
@@ -94,9 +130,16 @@ function OTPVerification({ email, onVerified, onBack }) {
         <button
           type="submit"
           className="btn btn-primary"
-          disabled={!isOTPComplete}
+          disabled={!isOTPComplete || loading}
         >
-          Verify OTP
+          {loading ? (
+            <>
+              <span className="loading"></span>
+              Verifying...
+            </>
+          ) : (
+            'Verify OTP'
+          )}
         </button>
 
         <button
@@ -105,6 +148,16 @@ function OTPVerification({ email, onVerified, onBack }) {
           onClick={onBack}
         >
           Change Email
+        </button>
+
+        <button
+          type="button"
+          className="btn btn-link"
+          onClick={handleResend}
+          disabled={resendDisabled || resendLoading}
+          style={{ marginTop: '10px', fontSize: '14px' }}
+        >
+          {resendLoading ? 'Resending...' : resendDisabled ? 'Resend in 30s' : 'Resend OTP'}
         </button>
       </form>
 

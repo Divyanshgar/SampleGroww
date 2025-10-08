@@ -15,6 +15,7 @@ var DB *gorm.DB
 
 // Initialize sets up the database connection
 func Initialize(cfg *config.Config) error {
+	// Step 1: Prepare DSN string
 	dsn := fmt.Sprintf(
 		"host=%s user=%s password=%s dbname=%s port=%s sslmode=%s",
 		cfg.Database.Host,
@@ -25,21 +26,23 @@ func Initialize(cfg *config.Config) error {
 		cfg.Database.SSLMode,
 	)
 
+	// Step 2: Connect to DB
 	var err error
 	DB, err = gorm.Open(postgres.Open(dsn), &gorm.Config{
 		Logger: logger.Default.LogMode(logger.Info),
 	})
-
 	if err != nil {
 		return fmt.Errorf("failed to connect to database: %w", err)
 	}
+	log.Println("✅ Database connection established successfully")
 
-	log.Println("Database connection established successfully")
-
-	// Auto migrate the schema
-	if err := AutoMigrate(); err != nil {
-		return fmt.Errorf("failed to migrate database: %w", err)
+	// ✅ Step 3: AutoMigrate all your models here (this creates tables)
+	if err := DB.AutoMigrate(
+		&models.User{},
+	); err != nil {
+		return fmt.Errorf("failed to auto-migrate tables: %w", err)
 	}
+	log.Println("🚀 AutoMigration completed successfully")
 
 	return nil
 }
@@ -47,11 +50,11 @@ func Initialize(cfg *config.Config) error {
 // AutoMigrate runs database migrations
 func AutoMigrate() error {
 	log.Println("Running database migrations...")
-	
+
 	err := DB.AutoMigrate(
 		&models.User{},
 	)
-	
+
 	if err != nil {
 		return err
 	}
