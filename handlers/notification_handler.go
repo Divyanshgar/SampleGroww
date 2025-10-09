@@ -13,11 +13,13 @@ import (
 
 type NotificationHandler struct {
 	emailService *services.EmailService
+	pdfService   *services.PDFService
 }
 
-func NewNotificationHandler(emailService *services.EmailService) *NotificationHandler {
+func NewNotificationHandler(emailService *services.EmailService, pdfService *services.PDFService) *NotificationHandler {
 	return &NotificationHandler{
 		emailService: emailService,
+		pdfService:   pdfService,
 	}
 }
 
@@ -71,10 +73,26 @@ func (h *NotificationHandler) SendUserProfile(c *gin.Context) {
 		return
 	}
 
-	// Send email
-	if err := h.emailService.SendUserProfileEmail(user); err != nil {
+	// Generate PDF for user profile
+	pdfBytes, err := h.pdfService.GenerateUserProfilePDF(user)
+	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
-			"error":   "Failed to send email",
+			"error":   "Failed to generate PDF",
+			"details": err.Error(),
+		})
+		return
+	}
+
+	// Debug: Save PDF to file for verification
+	//err = h.pdfService.SavePDFToFile("debug_user_profile.pdf", pdfBytes)
+	//	if err != nil {
+	//		log.Printf("Failed to save debug PDF file: %v", err)
+	//}
+
+	// Send email with PDF attachment
+	if err := h.emailService.SendUserProfileEmailWithAttachment(user, pdfBytes); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error":   "Failed to send email with PDF attachment",
 			"details": err.Error(),
 			"message": "User was saved to database but email sending failed",
 		})
@@ -82,7 +100,7 @@ func (h *NotificationHandler) SendUserProfile(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"message": "User profile email sent successfully",
+		"message": "User profile email with PDF sent successfully",
 		"user_id": user.ID,
 		"email":   user.Email,
 	})
@@ -225,8 +243,6 @@ func (h *NotificationHandler) VerifyOTPAndRegister(c *gin.Context) {
 	})
 }
 
-// ====================== VERIFY OTP ======================
-
 func (h *NotificationHandler) VerifyOTP(c *gin.Context) {
 	var req VerifyOTPRequest
 
@@ -245,4 +261,42 @@ func (h *NotificationHandler) VerifyOTP(c *gin.Context) {
 		"message": "OTP verified successfully",
 		"email":   req.Email,
 	})
+}
+
+// ====================== GENERATE USER PROFILE PDF ======================
+
+func (h *NotificationHandler) GenerateUserProfilePDF(c *gin.Context) {
+	userID := c.Param("id")
+	log.Printf("Generating PDF for user ID: %s", userID)
+
+	if database.GetDB() == nil {
+		log.Printf("Database connection is nil")
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": "Database connection error",
+		})
+		return
+	}
+
+	var user models.User
+	if err := database.GetDB().First(&user, userID).Error; err != nil {
+		log.Printf("User not found error: %v", err)
+		c.JSON(http.StatusNotFound, gin.H{
+			"error": "User not found",
+		})
+		return
+	}
+	log.Printf("User found: %+v", user)
+
+	pdfBytes, err := h.pdfService.GenerateUserProfilePDF(&user)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error":   "Failed to generate PDF",
+			"details": err.Error(),
+		})
+		return
+	}
+
+	c.Header("Content-Type", "application/pdf")
+	c.Header("Content-Disposition", "inline; filename=user_profile.pdf")
+	c.Data(http.StatusOK, "application/pdf", pdfBytes)
 }

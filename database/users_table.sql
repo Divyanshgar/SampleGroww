@@ -12,14 +12,14 @@ CREATE TABLE IF NOT EXISTS users (
     country VARCHAR(100),
     otp_code VARCHAR(6),  -- Stores the 6-digit OTP code
     otp_expires TIMESTAMP,  -- Expiration time for the OTP
-    otp_verified BOOLEAN DEFAULT FALSE,  -- Whether OTP has been verified
+    otp_verified BOOLEAN DEFAULT FALSE,  --d
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     deleted_at TIMESTAMP NULL
 );
 
 -- Create index on email for faster lookups
-CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
+CREATE INDEX IF NOT EXISTS idx_users_email ON users(email)a;
 
 -- Create index on deleted_at for soft deletes
 CREATE INDEX IF NOT EXISTS idx_users_deleted_at ON users(deleted_at);

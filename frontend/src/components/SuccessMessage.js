@@ -1,6 +1,13 @@
 import React from 'react';
 
 function SuccessMessage({ userData, onStartOver }) {
+  const handleGeneratePDF = () => {
+    if (userData?.user_id) {
+      const url = `http://localhost:8443/api/v1/pdf/generate-user-profile/${userData.user_id}`;
+      window.open(url, '_blank');
+    }
+  };
+
   return (
     <div className="success-container">
       <div style={{ textAlign: 'center', marginBottom: '30px' }}>
@@ -37,9 +44,18 @@ function SuccessMessage({ userData, onStartOver }) {
         type="button"
         className="btn btn-primary"
         onClick={onStartOver}
-        style={{ marginTop: '20px' }}
+        style={{ marginTop: '20px', marginRight: '10px' }}
       >
         Register Another User
+      </button>
+
+      <button
+        type="button"
+        className="btn btn-secondary"
+        onClick={handleGeneratePDF}
+        style={{ marginTop: '20px' }}
+      >
+        Generate PDF
       </button>
 
       <div style={{ textAlign: 'center', marginTop: '30px', color: '#999', fontSize: '12px' }}>

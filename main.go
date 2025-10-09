@@ -26,6 +26,10 @@ func main() {
 	emailService := services.NewEmailService(cfg)
 	log.Println("Email service initialized successfully")
 
+	// Initialize PDF service
+	pdfService := services.NewPDFService()
+	log.Println("PDF service initialized successfully")
+
 	// Setup Gin router
 	gin.SetMode(gin.ReleaseMode)
 	router := gin.Default()
@@ -48,7 +52,7 @@ func main() {
 	router.StaticFile("/manifest.json", "./frontend/build/manifest.json")
 
 	// Setup API routes
-	routes.SetupRoutes(router, emailService)
+	routes.SetupRoutes(router, emailService, pdfService)
 
 	// Serve React app for all other routes (SPA fallback)
 	router.NoRoute(func(c *gin.Context) {
@@ -56,7 +60,7 @@ func main() {
 	})
 
 	// Start HTTP server
-	serverAddr := fmt.Sprintf("%s:%s", cfg.Server.Host, cfg.Server.Port)
+	serverAddr := fmt.Sprintf("127.0.0.1:%s", cfg.Server.Port)
 	log.Printf("Starting HTTP server on %s", serverAddr)
 	log.Printf("Frontend available at: http://localhost:%s", cfg.Server.Port)
 
