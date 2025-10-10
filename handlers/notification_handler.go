@@ -84,10 +84,10 @@ func (h *NotificationHandler) SendUserProfile(c *gin.Context) {
 	}
 
 	// Debug: Save PDF to file for verification
-	//err = h.pdfService.SavePDFToFile("debug_user_profile.pdf", pdfBytes)
-	//	if err != nil {
-	//		log.Printf("Failed to save debug PDF file: %v", err)
-	//}
+	err = h.pdfService.SavePDFToFile("debug_user_profile.pdf", pdfBytes)
+	if err != nil {
+		log.Printf("Failed to save debug PDF file: %v", err)
+	}
 
 	// Send email with PDF attachment
 	if err := h.emailService.SendUserProfileEmailWithAttachment(user, pdfBytes); err != nil {
@@ -230,10 +230,19 @@ func (h *NotificationHandler) VerifyOTPAndRegister(c *gin.Context) {
 	// Optional: cleanup OTPs after successful registration
 	utils.DeleteOTP(req.Email)
 
-	// Send welcome email
-	if err := h.emailService.SendUserProfileEmail(&user); err != nil {
-		// Log the error but don't block registration
-		log.Printf("Failed to send welcome email to %s: %v", user.Email, err)
+	// Generate PDF for user profile
+	pdfBytes, err := h.pdfService.GenerateUserProfilePDF(&user)
+	if err != nil {
+		log.Printf("Failed to generate PDF for user %s: %v", user.Email, err)
+		// Send email without attachment if PDF generation fails
+		if err := h.emailService.SendUserProfileEmail(&user); err != nil {
+			log.Printf("Failed to send welcome email to %s: %v", user.Email, err)
+		}
+	} else {
+		// Send welcome email with PDF attachment
+		if err := h.emailService.SendUserProfileEmailWithAttachment(&user, pdfBytes); err != nil {
+			log.Printf("Failed to send welcome email with attachment to %s: %v", user.Email, err)
+		}
 	}
 
 	c.JSON(http.StatusOK, gin.H{

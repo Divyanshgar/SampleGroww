@@ -1,5 +1,18 @@
-# TODO: Update main.go to initialize PDF service and pass to notification handler
+# TODO: Add PDF Attachment to User Registration Email
 
-- [x] Update main.go: Initialize PDF service and pass to routes.SetupRoutes
-- [x] Update routes/routes.go: Modify SetupRoutes to accept pdfService and pass to NewNotificationHandler
-- [x] Update handlers/notification_handler.go: Modify NewNotificationHandler to accept pdfService parameter
+## Steps to Complete:
+
+1. **Update `handlers/notification_handler.go`**:
+   - In the `VerifyOTPAndRegister` function, after updating user details:
+     - Generate PDF using `h.pdfService.GenerateUserProfilePDF(&user)`.
+     - Replace `SendUserProfileEmail` with `SendUserProfileEmailWithAttachment(user, pdfBytes)`.
+     - Add error handling for PDF generation and email sending (log errors, do not block registration).
+
+2. **Test the changes**:
+   - Run the server and test the full registration flow (request OTP, verify OTP, complete registration).
+   - Verify that the welcome email includes the PDF attachment.
+   - Check server logs for any errors.
+
+3. **Verify and complete**:
+   - Confirm the PDF is generated correctly and attached to the email.
+   - Update this TODO with completion status.

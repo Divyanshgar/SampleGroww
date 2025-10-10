@@ -2,9 +2,12 @@ package services
 
 import (
 	"bytes"
+	"encoding/base64"
 	"fmt"
+	"io/ioutil"
 	"html/template"
 	"notification-server/models"
+	"strings"
 
 	wkhtmltopdf "github.com/SebastiaanKlippert/go-wkhtmltopdf"
 )
@@ -45,7 +48,18 @@ func (s *PDFService) generateUserProfileHTML(user *models.User) (string, error) 
 		return "", fmt.Errorf("failed to execute template: %w", err)
 	}
 
-	return buf.String(), nil
+	htmlContent := buf.String()
+
+	// Embed logo as base64
+	logoPath := "./templates/logo.jpg"
+	logoBytes, err := ioutil.ReadFile(logoPath)
+	if err != nil {
+		return "", fmt.Errorf("failed to read logo: %w", err)
+	}
+	logoBase64 := base64.StdEncoding.EncodeToString(logoBytes)
+	htmlContent = strings.Replace(htmlContent, "./logo.jpg", "data:image/jpeg;base64,"+logoBase64, -1)
+
+	return htmlContent, nil
 }
 
 // htmlToPDF converts HTML string to PDF bytes using wkhtmltopdf
@@ -73,4 +87,9 @@ func (s *PDFService) htmlToPDF(htmlContent string) ([]byte, error) {
 
 	// Return PDF bytes
 	return pdfg.Bytes(), nil
+}
+
+// SavePDFToFile saves PDF bytes to a file for debugging
+func (s *PDFService) SavePDFToFile(filename string, pdfBytes []byte) error {
+	return ioutil.WriteFile(filename, pdfBytes, 0644)
 }
