@@ -1,18 +1,17 @@
-# TODO: Add PDF Attachment to User Registration Email
+# TODO: Fix Excel Corruption by Correcting Fill.Color in Styles
 
 ## Steps to Complete:
-
-1. **Update `handlers/notification_handler.go`**:
-   - In the `VerifyOTPAndRegister` function, after updating user details:
-     - Generate PDF using `h.pdfService.GenerateUserProfilePDF(&user)`.
-     - Replace `SendUserProfileEmail` with `SendUserProfileEmailWithAttachment(user, pdfBytes)`.
-     - Add error handling for PDF generation and email sending (log errors, do not block registration).
-
-2. **Test the changes**:
-   - Run the server and test the full registration flow (request OTP, verify OTP, complete registration).
-   - Verify that the welcome email includes the PDF attachment.
-   - Check server logs for any errors.
-
-3. **Verify and complete**:
-   - Confirm the PDF is generated correctly and attached to the email.
-   - Update this TODO with completion status.
+- [ ] Fix Fill.Color from []string to string in addLogo() companyStyle
+- [ ] Fix Fill.Color from []string to string in addLogo() dateStyle
+- [ ] Fix Fill.Color from []string to string in addUserDetails() titleStyle
+- [ ] Fix Fill.Color from []string to string in addUserDetails() headerStyle
+- [ ] Fix Fill.Color from []string to string in addUserDetails() evenRowStyle
+- [ ] Fix Fill.Color from []string to string in addStockDetails() titleStyle
+- [ ] Fix Fill.Color from []string to string in addStockDetails() headerStyle
+- [ ] Fix Fill.Color from []string to string in addStockDetails() evenRowStyle
+- [ ] Fix Fill.Color from []string to string in addStockDetails() buyStyle
+- [ ] Fix Fill.Color from []string to string in addStockDetails() sellStyle
+- [ ] Fix Fill.Color from []string to string in addStockDetails() totalsStyle
+- [ ] Build the Go application (go build -o notification-server.exe)
+- [ ] Regenerate the Excel file using the service
+- [ ] Test the generated Excel by opening it and verifying no corruption errors

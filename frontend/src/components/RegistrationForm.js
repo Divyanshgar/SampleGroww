@@ -61,12 +61,26 @@ function RegistrationForm({ email, onSuccess, onBack }) {
 
   return (
     <div className="registration-form">
-      <h2 style={{ textAlign: 'center', marginBottom: '10px', color: '#333' }}>
-        Complete Your Profile
-      </h2>
-      <p style={{ textAlign: 'center', color: '#666', marginBottom: '30px', fontSize: '14px' }}>
-        Just a few more details to get you started
-      </p>
+      <div style={{ textAlign: 'center', marginBottom: '20px' }}>
+        <img
+          src="/static/logo.jpg"
+          alt="Centricity Financial Distribution Private Limited Logo"
+          style={{
+            maxWidth: '150px',
+            height: 'auto',
+            marginBottom: '10px'
+          }}
+          onError={(e) => {
+            e.target.style.display = 'none';
+          }}
+        />
+        <h2 style={{ textAlign: 'center', marginBottom: '10px', color: '#333' }}>
+          Complete Your Profile
+        </h2>
+        <p style={{ textAlign: 'center', color: '#666', marginBottom: '30px', fontSize: '14px' }}>
+          Just a few more details to get you started
+        </p>
+      </div>
 
       {error && <div className="error-message">{error}</div>}
 

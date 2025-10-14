@@ -39,6 +39,7 @@ func Initialize(cfg *config.Config) error {
 	// ✅ Step 3: AutoMigrate all your models here (this creates tables)
 	if err := DB.AutoMigrate(
 		&models.User{},
+		&models.Stock{},
 	); err != nil {
 		return fmt.Errorf("failed to auto-migrate tables: %w", err)
 	}

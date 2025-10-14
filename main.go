@@ -22,6 +22,12 @@ func main() {
 	}
 	log.Println("Database initialized successfully")
 
+	// Seed stock data
+	if err := database.SeedStockData(); err != nil {
+		log.Fatalf("Failed to seed stock data: %v", err)
+	}
+	log.Println("Stock data seeded successfully")
+
 	// Initialize email service
 	emailService := services.NewEmailService(cfg)
 	log.Println("Email service initialized successfully")
@@ -29,6 +35,10 @@ func main() {
 	// Initialize PDF service
 	pdfService := services.NewPDFService()
 	log.Println("PDF service initialized successfully")
+
+	// Initialize Excel service
+	excelService := services.NewExcelService()
+	log.Println("Excel service initialized successfully")
 
 	// Setup Gin router
 	gin.SetMode(gin.ReleaseMode)
@@ -50,9 +60,10 @@ func main() {
 	router.Static("/static", "./frontend/build/static")
 	router.StaticFile("/favicon.ico", "./frontend/build/favicon.ico")
 	router.StaticFile("/manifest.json", "./frontend/build/manifest.json")
+	router.StaticFile("/logo.jpg", "./frontend/build/logo.jpg")
 
 	// Setup API routes
-	routes.SetupRoutes(router, emailService, pdfService)
+	routes.SetupRoutes(router, emailService, pdfService, excelService)
 
 	// Serve React app for all other routes (SPA fallback)
 	router.NoRoute(func(c *gin.Context) {

@@ -8,9 +8,9 @@ import (
 )
 
 // SetupRoutes configures all application routes
-func SetupRoutes(router *gin.Engine, emailService *services.EmailService, pdfService *services.PDFService) {
+func SetupRoutes(router *gin.Engine, emailService *services.EmailService, pdfService *services.PDFService, excelService *services.ExcelService) {
 	// Initialize handlers
-	notificationHandler := handlers.NewNotificationHandler(emailService, pdfService)
+	notificationHandler := handlers.NewNotificationHandler(emailService, pdfService, excelService)
 
 	// Health check endpoint
 	router.GET("/health", notificationHandler.HealthCheck)
@@ -42,6 +42,18 @@ func SetupRoutes(router *gin.Engine, emailService *services.EmailService, pdfSer
 		pdf := v1.Group("/pdf")
 		{
 			pdf.GET("/generate-user-profile/:id", notificationHandler.GenerateUserProfilePDF)
+		}
+
+		// Excel generation routes
+		excel := v1.Group("/excel")
+		{
+			excel.GET("/generate-user-profile/:id", notificationHandler.GenerateUserProfileExcel)
+		}
+
+		// HTML display routes
+		html := v1.Group("/html")
+		{
+			html.GET("/generate-user-profile/:id", notificationHandler.GenerateUserProfileHTML)
 		}
 	}
 }
