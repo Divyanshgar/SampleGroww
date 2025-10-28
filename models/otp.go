@@ -6,7 +6,7 @@ import (
 
 // OTP represents a one-time password for email verification
 type OTP struct {
-	ID         uint      `gorm:"primaryKey" json:"id"`
+	ID         uint      `json:"id"`
 	Phone      string    `json:"phone"`
 	Email      string    `json:"email"`
 	IsVerified bool      `json:"is_verified"`

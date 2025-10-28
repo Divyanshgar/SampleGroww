@@ -1,6 +1,8 @@
+
 package example
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"sort"
@@ -35,29 +37,43 @@ func SimpleExcelExample() {
 	}
 
 	// Fetch one user for validated by
-	var user models.User
-	if err := database.DB.First(&user).Error; err != nil {
+	userDB, err := database.GetQueries().GetUser(context.Background(), 1) // Assuming ID 1 exists
+	var validatedBy string
+	if err != nil {
 		log.Printf("No user found for validated by, using default: %v", err)
-		user.FirstName = "John"
-		user.LastName = "Smith"
+		validatedBy = "Validated by John Smith"
+	} else {
+		user := database.ConvertDBUserToModel(userDB)
+		validatedBy = fmt.Sprintf("Validated by %s %s", user.FirstName, user.LastName)
 	}
-	validatedBy := fmt.Sprintf("Validated by %s %s", user.FirstName, user.LastName)
 
 	// Fetch stocks from database
-	var stocks []models.Stock
-	if err := database.DB.Find(&stocks).Error; err != nil {
+	dbStocks, err := database.GetQueries().ListStocks(context.Background())
+	if err != nil {
 		log.Fatalf("Failed to fetch stocks: %v", err)
 	}
 
-	fmt.Printf("Fetched %d stocks from database\n", len(stocks))
+	fmt.Printf("Fetched %d stocks from database\n", len(dbStocks))
+
+	// Convert to models.Stock
+	stocks := make([]models.Stock, len(dbStocks))
+	for i, dbStock := range dbStocks {
+		stocks[i] = database.ConvertDBStockToModel(dbStock)
+	}
 
 	// Fetch users for user details
-	var users []models.User
-	if err := database.DB.Find(&users).Error; err != nil {
+	dbUsers, err := database.GetQueries().ListUsers(context.Background())
+	if err != nil {
 		log.Fatalf("Failed to fetch users: %v", err)
 	}
 
-	fmt.Printf("Fetched %d users from database\n", len(users))
+	fmt.Printf("Fetched %d users from database\n", len(dbUsers))
+
+	// Convert to models.User
+	users := make([]models.User, len(dbUsers))
+	for i, dbUser := range dbUsers {
+		users[i] = database.ConvertDBUserToModel(dbUser)
+	}
 
 	// Convert to StockData slice
 	stockData := make([]StockData, len(stocks))
@@ -93,14 +109,12 @@ func SimpleExcelExample() {
 	f.SetSheetName("Sheet1", "Report")
 
 	// Add image to A1 in Report sheet
-	var err error
 	logoPath := "C:/Users/DakshBisht/SampleGroww/services/logo2.png"
-	err = f.AddPicture("Report", "A1", logoPath, &excelize.GraphicOptions{
+	if err := f.AddPicture("Report", "A1", logoPath, &excelize.GraphicOptions{
 		AltText: "Logo",
 		ScaleX:  0.5,
 		ScaleY:  0.5,
-	})
-	if err != nil {
+	}); err != nil {
 		fmt.Printf("Failed to add image: %v\n", err)
 	} else {
 		fmt.Println("Image added successfully to Report sheet")

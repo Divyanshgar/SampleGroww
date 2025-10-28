@@ -1,6 +1,7 @@
 package services
 
 import (
+	"context"
 	"fmt"
 	"notification-server/database"
 	"notification-server/models"
@@ -96,22 +97,23 @@ func (s *ExcelService) addLogo(f *excelize.File) error {
 		}
 	}
 
-	if absPath == "" {
-		return fmt.Errorf("no valid logo file found")
-	}
-
 	sheet := "Profile Template"
 
-	// Add the logo image to A1 in "Profile Template" sheet
-	if err := f.AddPicture(sheet, "A1", absPath, &excelize.GraphicOptions{
-		AltText: "Centricity Logo",
-		ScaleX:  1.0,
-		ScaleY:  1.0,
-	}); err != nil {
-		return fmt.Errorf("failed to add logo: %w", err)
+	// Attempt to add the logo image to A1 in "Profile Template" sheet
+	if absPath != "" {
+		if err := f.AddPicture(sheet, "A1", absPath, &excelize.GraphicOptions{
+			AltText: "Centricity Logo",
+			ScaleX:  1.0,
+			ScaleY:  1.0,
+		}); err != nil {
+			// Log the error but continue without the logo
+			fmt.Printf("Warning: Failed to add logo from %s: %v. Continuing without logo.\n", absPath, err)
+		}
+	} else {
+		fmt.Println("Warning: No valid logo file found. Continuing without logo.")
 	}
 
-	// Add company name in A3 (merged A3:B3)
+	// Always add company name in A3 (merged A3:B3), regardless of logo success
 	if err := f.MergeCell(sheet, "A3", "B3"); err != nil {
 		return fmt.Errorf("failed to merge cells for company name: %w", err)
 	}
@@ -135,7 +137,7 @@ func (s *ExcelService) addLogo(f *excelize.File) error {
 	}
 	f.SetCellStyle(sheet, "A3", "B3", companyStyle)
 
-	// Add generation date in A4 (merged A4:B4)
+	// Always add generation date in A4 (merged A4:B4), regardless of logo success
 	if err := f.MergeCell(sheet, "A4", "B4"); err != nil {
 		return fmt.Errorf("failed to merge cells for date: %w", err)
 	}
@@ -317,9 +319,15 @@ func (s *ExcelService) addStockDetails(f *excelize.File, user *models.User) erro
 	sheet := "Profile Template"
 
 	// Fetch real stock data from database
-	var stocks []models.Stock
-	if err := database.GetDB().Where("user_id = ?", user.ID).Find(&stocks).Error; err != nil {
+	dbStocks, err := database.GetQueries().ListStocksByUser(context.Background(), int32(user.ID))
+	if err != nil {
 		return fmt.Errorf("failed to fetch stocks: %w", err)
+	}
+
+	// Convert to models.Stock
+	stocks := make([]models.Stock, len(dbStocks))
+	for i, dbStock := range dbStocks {
+		stocks[i] = database.ConvertDBStockToModel(dbStock)
 	}
 
 	// Sort stocks by date

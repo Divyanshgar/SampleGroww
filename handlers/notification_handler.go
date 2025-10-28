@@ -1,14 +1,18 @@
 package handlers
 
 import (
+	"context"
+	"database/sql"
 	"fmt"
 	"log"
 	"net/http"
 	"notification-server/database"
+	"notification-server/db"
 	"notification-server/models"
 	"notification-server/services"
 	"notification-server/utils"
 	"sort"
+	"strconv"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -60,7 +64,7 @@ func (h *NotificationHandler) SendUserProfile(c *gin.Context) {
 	}
 
 	// Save user to database
-	user := &models.User{
+	userModel := models.User{
 		FirstName: req.FirstName,
 		LastName:  req.LastName,
 		Email:     req.Email,
@@ -69,8 +73,10 @@ func (h *NotificationHandler) SendUserProfile(c *gin.Context) {
 		City:      req.City,
 		Country:   req.Country,
 	}
+	params := database.ConvertModelUserToDBParams(userModel)
 
-	if err := database.GetDB().Create(user).Error; err != nil {
+	createdUser, err := database.GetQueries().CreateUser(context.Background(), params)
+	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error":   "Failed to save user to database",
 			"details": err.Error(),
@@ -78,8 +84,10 @@ func (h *NotificationHandler) SendUserProfile(c *gin.Context) {
 		return
 	}
 
+	user := database.ConvertDBUserToModel(createdUser)
+
 	// Generate PDF for user profile
-	pdfBytes, err := h.pdfService.GenerateUserProfilePDF(user)
+	pdfBytes, err := h.pdfService.GenerateUserProfilePDF(&user)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error":   "Failed to generate PDF",
@@ -95,7 +103,7 @@ func (h *NotificationHandler) SendUserProfile(c *gin.Context) {
 	}
 
 	// Send email with PDF attachment
-	if err := h.emailService.SendUserProfileEmailWithAttachment(user, pdfBytes); err != nil {
+	if err := h.emailService.SendUserProfileEmailWithAttachment(&user, pdfBytes); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error":   "Failed to send email with PDF attachment",
 			"details": err.Error(),
@@ -116,15 +124,24 @@ func (h *NotificationHandler) SendUserProfile(c *gin.Context) {
 func (h *NotificationHandler) GetUserProfile(c *gin.Context) {
 	userID := c.Param("id")
 
-	var user models.User
-	if err := database.GetDB().First(&user, userID).Error; err != nil {
+	userIDInt, err := strconv.Atoi(userID)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "Invalid user ID",
+		})
+		return
+	}
+
+	user, err := database.GetQueries().GetUser(context.Background(), int32(userIDInt))
+	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{
 			"error": "User not found",
 		})
 		return
 	}
 
-	c.JSON(http.StatusOK, user)
+	userModel := database.ConvertDBUserToModel(user)
+	c.JSON(http.StatusOK, userModel)
 }
 
 // ====================== REQUEST OTP ======================
@@ -142,8 +159,9 @@ func (h *NotificationHandler) RequestOTP(c *gin.Context) {
 	}
 
 	// Check if user already exists
-	var existingUser models.User
-	if err := database.GetDB().Where("email = ?", req.Email).First(&existingUser).Error; err == nil {
+	existingUserDB, err := database.GetQueries().GetUserByEmail(context.Background(), req.Email)
+	if err == nil {
+		existingUser := database.ConvertDBUserToModel(existingUserDB)
 		// User exists, check if already verified/registered
 		if existingUser.OTPVerified {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "Email already registered"})
@@ -212,25 +230,29 @@ func (h *NotificationHandler) VerifyOTPAndRegister(c *gin.Context) {
 	}
 
 	// Find the existing user
-	var user models.User
-	if err := database.GetDB().Where("email = ?", req.Email).First(&user).Error; err != nil {
+	userDB, err := database.GetQueries().GetUserByEmail(context.Background(), req.Email)
+	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "User not found", "details": err.Error()})
 		return
 	}
 
 	// Update user with full information
-	updates := map[string]interface{}{
-		"first_name": req.FirstName,
-		"last_name":  req.LastName,
-		"phone":      req.Phone,
-		"address":    req.Address,
-		"city":       req.City,
-		"country":    req.Country,
+	params := db.UpdateUserParams{
+		ID:        userDB.ID,
+		FirstName: req.FirstName,
+		LastName:  req.LastName,
+		Email:     req.Email,
+		Phone:     sql.NullString{String: req.Phone, Valid: req.Phone != ""},
+		Address:   sql.NullString{String: req.Address, Valid: req.Address != ""},
+		City:      sql.NullString{String: req.City, Valid: req.City != ""},
+		Country:   sql.NullString{String: req.Country, Valid: req.Country != ""},
 	}
-	if err := database.GetDB().Model(&user).Updates(updates).Error; err != nil {
+	updatedUser, err := database.GetQueries().UpdateUser(context.Background(), params)
+	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update user", "details": err.Error()})
 		return
 	}
+	user := database.ConvertDBUserToModel(updatedUser)
 
 	// Optional: cleanup OTPs after successful registration
 	utils.DeleteOTP(req.Email)
@@ -283,22 +305,23 @@ func (h *NotificationHandler) GenerateUserProfilePDF(c *gin.Context) {
 	userID := c.Param("id")
 	log.Printf("Generating PDF for user ID: %s", userID)
 
-	if database.GetDB() == nil {
-		log.Printf("Database connection is nil")
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": "Database connection error",
+	userIDInt, err := strconv.Atoi(userID)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "Invalid user ID",
 		})
 		return
 	}
 
-	var user models.User
-	if err := database.GetDB().First(&user, userID).Error; err != nil {
+	userDB, err := database.GetQueries().GetUser(context.Background(), int32(userIDInt))
+	if err != nil {
 		log.Printf("User not found error: %v", err)
 		c.JSON(http.StatusNotFound, gin.H{
 			"error": "User not found",
 		})
 		return
 	}
+	user := database.ConvertDBUserToModel(userDB)
 	log.Printf("User found: %+v", user)
 
 	pdfBytes, err := h.pdfService.GenerateUserProfilePDF(&user)
@@ -319,29 +342,36 @@ func (h *NotificationHandler) GenerateUserProfileHTML(c *gin.Context) {
 	userID := c.Param("id")
 	log.Printf("Generating HTML for user ID: %s", userID)
 
-	if database.GetDB() == nil {
-		log.Printf("Database connection is nil")
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": "Database connection error",
+	userIDInt, err := strconv.Atoi(userID)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "Invalid user ID",
 		})
 		return
 	}
 
-	var user models.User
-	if err := database.GetDB().First(&user, userID).Error; err != nil {
+	userDB, err := database.GetQueries().GetUser(context.Background(), int32(userIDInt))
+	if err != nil {
 		log.Printf("User not found error: %v", err)
 		c.JSON(http.StatusNotFound, gin.H{
 			"error": "User not found",
 		})
 		return
 	}
+	user := database.ConvertDBUserToModel(userDB)
 	log.Printf("User found: %+v", user)
 
 	// Fetch stocks for the user
-	var stocks []models.Stock
-	if err := database.GetDB().Where("user_id = ?", user.ID).Find(&stocks).Error; err != nil {
+	dbStocks, err := database.GetQueries().ListStocksByUser(context.Background(), int32(user.ID))
+	if err != nil {
 		log.Printf("Failed to fetch stocks: %v", err)
-		stocks = []models.Stock{}
+		dbStocks = []db.Stock{}
+	}
+
+	// Convert to models.Stock
+	stocks := make([]models.Stock, len(dbStocks))
+	for i, dbStock := range dbStocks {
+		stocks[i] = database.ConvertDBStockToModel(dbStock)
 	}
 
 	// Sort stocks by date
@@ -478,22 +508,23 @@ func (h *NotificationHandler) GenerateUserProfileExcel(c *gin.Context) {
 	userID := c.Param("id")
 	log.Printf("Generating Excel for user ID: %s", userID)
 
-	if database.GetDB() == nil {
-		log.Printf("Database connection is nil")
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": "Database connection error",
+	userIDInt, err := strconv.Atoi(userID)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "Invalid user ID",
 		})
 		return
 	}
 
-	var user models.User
-	if err := database.GetDB().First(&user, userID).Error; err != nil {
+	userDB, err := database.GetQueries().GetUser(context.Background(), int32(userIDInt))
+	if err != nil {
 		log.Printf("User not found error: %v", err)
 		c.JSON(http.StatusNotFound, gin.H{
 			"error": "User not found",
 		})
 		return
 	}
+	user := database.ConvertDBUserToModel(userDB)
 	log.Printf("User found: %+v", user)
 
 	excelBytes, err := h.excelService.GenerateUserProfileExcel(&user)

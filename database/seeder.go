@@ -1,8 +1,12 @@
 package database
 
 import (
+	"context"
+	"database/sql"
+	"fmt"
 	"log"
 	"math/rand"
+	"notification-server/db"
 	"notification-server/models"
 	"time"
 )
@@ -11,11 +15,18 @@ import (
 func SeedStockData() error {
 	log.Println("Seeding stock data...")
 
-	// Check if users exist, if not, create sample users
-	var userCount int64
-	DB.Model(&models.User{}).Count(&userCount)
+	// Ensure database queries are initialized
+	if Queries == nil {
+		return fmt.Errorf("database queries not initialized; run database.Initialize first")
+	}
 
-	if userCount == 0 {
+	// Check if users exist, if not, create sample users
+	users, err := Queries.ListUsers(context.Background())
+	if err != nil {
+		return err
+	}
+
+	if len(users) == 0 {
 		log.Println("No users found, creating sample users...")
 		sampleUsers := []models.User{
 			{
@@ -48,16 +59,25 @@ func SeedStockData() error {
 		}
 
 		for _, user := range sampleUsers {
-			if err := DB.Create(&user).Error; err != nil {
+			_, err := Queries.CreateUser(context.Background(), db.CreateUserParams{
+				FirstName: user.FirstName,
+				LastName:  user.LastName,
+				Email:     user.Email,
+				Phone:     sql.NullString{String: user.Phone, Valid: true},
+				Address:   sql.NullString{String: user.Address, Valid: true},
+				City:      sql.NullString{String: user.City, Valid: true},
+				Country:   sql.NullString{String: user.Country, Valid: true},
+			})
+			if err != nil {
 				return err
 			}
 		}
 		log.Println("Sample users created successfully")
 	}
 
-	// Fetch all users
-	var users []models.User
-	if err := DB.Find(&users).Error; err != nil {
+	// Fetch all users again after potential creation
+	users, err = Queries.ListUsers(context.Background())
+	if err != nil {
 		return err
 	}
 
@@ -69,9 +89,11 @@ func SeedStockData() error {
 
 	for _, user := range users {
 		// Check if user already has stock data
-		var stockCount int64
-		DB.Model(&models.Stock{}).Where("user_id = ?", user.ID).Count(&stockCount)
-		if stockCount > 0 {
+		userStocks, err := Queries.ListStocksByUser(context.Background(), user.ID)
+		if err != nil {
+			return err
+		}
+		if len(userStocks) > 0 {
 			log.Printf("User %s already has stock data, skipping...", user.Email)
 			continue
 		}
@@ -85,7 +107,7 @@ func SeedStockData() error {
 			if rand.Float32() < 0.3 { // 30% chance of sell
 				action = "sell"
 			}
-			quantity := rand.Intn(100) + 1 // 1 to 100
+			quantity := rand.Intn(100) + 1   // 1 to 100
 			price := rand.Float64()*490 + 10 // 10 to 500
 			originalValue := float64(quantity) * price
 
@@ -93,17 +115,16 @@ func SeedStockData() error {
 			daysAgo := rand.Intn(365)
 			date := time.Now().AddDate(0, 0, -daysAgo)
 
-			stock := models.Stock{
+			_, err := Queries.CreateStock(context.Background(), db.CreateStockParams{
 				UserID:        user.ID,
 				StockName:     stockName,
 				Action:        action,
-				Quantity:      quantity,
-				Price:         price,
-				OriginalValue: originalValue,
-				Date:          date,
-			}
-
-			if err := DB.Create(&stock).Error; err != nil {
+				Quantity:      int32(quantity),
+				Price:         fmt.Sprintf("%.2f", price),
+				OriginalValue: fmt.Sprintf("%.2f", originalValue),
+				Date:          sql.NullTime{Time: date, Valid: true},
+			})
+			if err != nil {
 				return err
 			}
 		}

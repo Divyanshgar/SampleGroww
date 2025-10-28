@@ -1,70 +1,82 @@
 package database
 
 import (
+	"database/sql"
 	"fmt"
 	"log"
 	"notification-server/config"
-	"notification-server/models"
+	"notification-server/db"
+	"os"
+	"path/filepath"
 
-	"gorm.io/driver/postgres"
-	"gorm.io/gorm"
-	"gorm.io/gorm/logger"
+	_ "github.com/lib/pq"
 )
 
-var DB *gorm.DB
+var DB *sql.DB
+var Queries *db.Queries
 
-// Initialize sets up the database connection
+// Initialize sets up the database connection and runs migrations
 func Initialize(cfg *config.Config) error {
 	// Step 1: Prepare DSN string
 	dsn := fmt.Sprintf(
-		"host=%s user=%s password=%s dbname=%s port=%s sslmode=%s",
-		cfg.Database.Host,
+		"postgres://%s:%s@%s:%s/%s?sslmode=%s",
 		cfg.Database.User,
 		cfg.Database.Password,
-		cfg.Database.DBName,
+		cfg.Database.Host,
 		cfg.Database.Port,
+		cfg.Database.DBName,
 		cfg.Database.SSLMode,
 	)
 
 	// Step 2: Connect to DB
 	var err error
-	DB, err = gorm.Open(postgres.Open(dsn), &gorm.Config{
-		Logger: logger.Default.LogMode(logger.Info),
-	})
+	DB, err = sql.Open("postgres", dsn)
 	if err != nil {
-		return fmt.Errorf("failed to connect to database: %w", err)
+		return fmt.Errorf("failed to open database: %w", err)
+	}
+
+	if err = DB.Ping(); err != nil {
+		return fmt.Errorf("failed to ping database: %w", err)
 	}
 	log.Println("✅ Database connection established successfully")
 
-	// ✅ Step 3: AutoMigrate all your models here (this creates tables)
-	if err := DB.AutoMigrate(
-		&models.User{},
-		&models.Stock{},
-	); err != nil {
-		return fmt.Errorf("failed to auto-migrate tables: %w", err)
+	// Step 3: Run migrations (execute schema.sql)
+	if err = runMigrations(DB); err != nil {
+		log.Printf("Migration failed (possibly tables already exist): %v", err)
+		log.Println("Continuing with existing database schema...")
+	} else {
+		log.Println("🚀 Migrations completed successfully")
 	}
-	log.Println("🚀 AutoMigration completed successfully")
+
+	// Step 4: Initialize SQLC Queries
+	Queries = db.New(DB)
+	log.Println("🔧 SQLC Queries initialized successfully")
 
 	return nil
 }
 
-// AutoMigrate runs database migrations
-func AutoMigrate() error {
-	log.Println("Running database migrations...")
-
-	err := DB.AutoMigrate(
-		&models.User{},
-	)
-
+// runMigrations executes the schema.sql file to create tables
+func runMigrations(db *sql.DB) error {
+	schemaPath := filepath.Join("database", "schema.sql")
+	schemaSQL, err := os.ReadFile(schemaPath)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to read schema file: %w", err)
 	}
 
-	log.Println("Database migrations completed successfully")
+	_, err = db.Exec(string(schemaSQL))
+	if err != nil {
+		return fmt.Errorf("failed to execute schema: %w", err)
+	}
+
 	return nil
 }
 
-// GetDB returns the database instance
-func GetDB() *gorm.DB {
+// GetDB returns the SQL database instance (for backward compatibility)
+func GetDB() *sql.DB {
 	return DB
+}
+
+// GetQueries returns the SQLC Queries instance
+func GetQueries() *db.Queries {
+	return Queries
 }
