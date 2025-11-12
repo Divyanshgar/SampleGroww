@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+ import React, { useState } from 'react';
 import axios from 'axios';
 
 function RegistrationForm({ email, onSuccess, onBack }) {
@@ -12,6 +12,7 @@ function RegistrationForm({ email, onSuccess, onBack }) {
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [resendLoading, setResendLoading] = useState(false);
 
   const handleChange = (e) => {
     setFormData({
@@ -44,14 +45,42 @@ function RegistrationForm({ email, onSuccess, onBack }) {
     }
   };
 
+  const handleResend = async () => {
+    setError('');
+    setResendLoading(true);
+    try {
+      await axios.post('/api/v1/auth/request-otp', { email });
+      // Go back to OTP verification step
+      onBack();
+    } catch (err) {
+      setError(err.response?.data?.error || 'Failed to resend OTP');
+    } finally {
+      setResendLoading(false);
+    }
+  };
+
   return (
     <div className="registration-form">
-      <h2 style={{ textAlign: 'center', marginBottom: '10px', color: '#333' }}>
-        Complete Your Profile
-      </h2>
-      <p style={{ textAlign: 'center', color: '#666', marginBottom: '30px', fontSize: '14px' }}>
-        Just a few more details to get you started
-      </p>
+      <div style={{ textAlign: 'center', marginBottom: '20px' }}>
+        <img
+          src="/static/logo.jpg"
+          alt="Centricity Financial Distribution Private Limited Logo"
+          style={{
+            maxWidth: '150px',
+            height: 'auto',
+            marginBottom: '10px'
+          }}
+          onError={(e) => {
+            e.target.style.display = 'none';
+          }}
+        />
+        <h2 style={{ textAlign: 'center', marginBottom: '10px', color: '#333' }}>
+          Complete Your Profile
+        </h2>
+        <p style={{ textAlign: 'center', color: '#666', marginBottom: '30px', fontSize: '14px' }}>
+          Just a few more details to get you started
+        </p>
+      </div>
 
       {error && <div className="error-message">{error}</div>}
 
@@ -155,6 +184,18 @@ function RegistrationForm({ email, onSuccess, onBack }) {
         >
           Back
         </button>
+
+        {error === 'Invalid or expired OTP' && (
+          <button
+            type="button"
+            className="btn btn-link"
+            onClick={handleResend}
+            disabled={resendLoading}
+            style={{ marginTop: '10px', fontSize: '14px' }}
+          >
+            {resendLoading ? 'Resending...' : 'Resend OTP'}
+          </button>
+        )}
       </form>
 
       <div className="info-message" style={{ marginTop: '20px', fontSize: '12px' }}>

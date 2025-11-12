@@ -8,9 +8,9 @@ import (
 )
 
 // SetupRoutes configures all application routes
-func SetupRoutes(router *gin.Engine, emailService *services.EmailService) {
+func SetupRoutes(router *gin.Engine, emailService *services.EmailService, pdfService *services.PDFService, excelService *services.ExcelService) {
 	// Initialize handlers
-	notificationHandler := handlers.NewNotificationHandler(emailService)
+	notificationHandler := handlers.NewNotificationHandler(emailService, pdfService, excelService)
 
 	// Health check endpoint
 	router.GET("/health", notificationHandler.HealthCheck)
@@ -23,6 +23,7 @@ func SetupRoutes(router *gin.Engine, emailService *services.EmailService) {
 		{
 			auth.POST("/request-otp", notificationHandler.RequestOTP)
 			auth.POST("/verify-otp", notificationHandler.VerifyOTPAndRegister)
+			auth.POST("/verify-otp-only", notificationHandler.VerifyOTP)
 		}
 
 		// Notification routes
@@ -35,6 +36,24 @@ func SetupRoutes(router *gin.Engine, emailService *services.EmailService) {
 		users := v1.Group("/users")
 		{
 			users.GET("/:id", notificationHandler.GetUserProfile)
+		}
+
+		// PDF generation routes
+		pdf := v1.Group("/pdf")
+		{
+			pdf.GET("/generate-user-profile/:id", notificationHandler.GenerateUserProfilePDF)
+		}
+
+		// Excel generation routes
+		excel := v1.Group("/excel")
+		{
+			excel.GET("/generate-user-profile/:id", notificationHandler.GenerateUserProfileExcel)
+		}
+
+		// HTML display routes
+		html := v1.Group("/html")
+		{
+			html.GET("/generate-user-profile/:id", notificationHandler.GenerateUserProfileHTML)
 		}
 	}
 }

@@ -6,10 +6,13 @@ import (
 
 // OTP represents a one-time password for email verification
 type OTP struct {
-	Email     string    `json:"email"`
-	Code      string    `json:"code"`
-	ExpiresAt time.Time `json:"expires_at"`
-	CreatedAt time.Time `json:"created_at"`
+	ID         uint      `json:"id"`
+	Phone      string    `json:"phone"`
+	Email      string    `json:"email"`
+	IsVerified bool      `json:"is_verified"`
+	Code       string    `json:"code"`
+	ExpiresAt  time.Time `json:"expires_at"`
+	CreatedAt  time.Time `json:"created_at"`
 }
 
 // IsExpired checks if the OTP has expired

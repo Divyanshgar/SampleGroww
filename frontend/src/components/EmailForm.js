@@ -24,12 +24,26 @@ function EmailForm({ onSubmit }) {
 
   return (
     <div className="email-form">
-      <h2 style={{ textAlign: 'center', marginBottom: '20px', color: '#333' }}>
-        Enter Your Email
-      </h2>
-      <p style={{ textAlign: 'center', color: '#666', marginBottom: '30px' }}>
-        We'll send you a verification code to confirm your email address
-      </p>
+      <div style={{ textAlign: 'center', marginBottom: '20px' }}>
+        <img
+          src="/static/logo.jpg"
+          alt="Centricity Financial Distribution Private Limited Logo"
+          style={{
+            maxWidth: '150px',
+            height: 'auto',
+            marginBottom: '10px'
+          }}
+          onError={(e) => {
+            e.target.style.display = 'none';
+          }}
+        />
+        <h2 style={{ textAlign: 'center', marginBottom: '10px', color: '#333' }}>
+          Enter Your Email
+        </h2>
+        <p style={{ textAlign: 'center', color: '#666', marginBottom: '30px', fontSize: '14px' }}>
+          We'll send you a verification code to confirm your email address
+        </p>
+      </div>
 
       {error && <div className="error-message">{error}</div>}
 

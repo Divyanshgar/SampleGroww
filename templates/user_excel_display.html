@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>User Profile and Stock Data Display</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #f9f9f9;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        .logo {
+            max-width: 200px;
+            height: auto;
+        }
+        .company-name {
+            font-size: 18px;
+            font-weight: bold;
+            color: #000;
+            margin: 10px 0;
+        }
+        .generated-date {
+            font-size: 12px;
+            color: #666;
+        }
+        .section-title {
+            font-size: 16px;
+            font-weight: bold;
+            background-color: #667eea;
+            color: white;
+            padding: 10px;
+            text-align: center;
+            margin: 20px 0 10px 0;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+            background-color: white;
+        }
+        th, td {
+            border: 1px solid #000;
+            padding: 8px;
+            text-align: left;
+        }
+        th {
+            background-color: #667eea;
+            color: white;
+            font-weight: bold;
+            text-align: center;
+        }
+        .even-row {
+            background-color: #f2f2f2;
+        }
+        .odd-row {
+            background-color: white;
+        }
+        .buy {
+            background-color: #d4edda;
+        }
+        .sell {
+            background-color: #f8d7da;
+        }
+        .totals-row {
+            background-color: #e9ecef;
+            font-weight: bold;
+        }
+        .no-data {
+            text-align: center;
+            color: #666;
+            font-style: italic;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <img src="./logo.jpg" alt="Centricity Logo" class="logo">
+        <div class="company-name">Centricity Financial Distribution Private Limited</div>
+        <div class="generated-date">Generated on: <span id="current-date"></span></div>
+    </div>
+
+    <div class="section-title">User Profile Summary</div>
+    <table>
+        <thead>
+            <tr>
+                <th>Field</th>
+                <th>Value</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr class="even-row">
+                <td>User ID</td>
+                <td>1</td>
+            </tr>
+            <tr class="odd-row">
+                <td>First Name</td>
+                <td>John</td>
+            </tr>
+            <tr class="even-row">
+                <td>Last Name</td>
+                <td>Doe</td>
+            </tr>
+            <tr class="odd-row">
+                <td>Email</td>
+                <td>john.doe@example.com</td>
+            </tr>
+            <tr class="even-row">
+                <td>Phone</td>
+                <td>+1234567890</td>
+            </tr>
+            <tr class="odd-row">
+                <td>Address</td>
+                <td>123 Main St</td>
+            </tr>
+            <tr class="even-row">
+                <td>City</td>
+                <td>New York</td>
+            </tr>
+            <tr class="odd-row">
+                <td>Country</td>
+                <td>USA</td>
+            </tr>
+        </tbody>
+    </table>
+
+    <div class="section-title">Stock Transactions</div>
+    <table>
+        <thead>
+            <tr>
+                <th>Stock Name</th>
+                <th>Action</th>
+                <th>Quantity</th>
+                <th>Price</th>
+                <th>Original Value</th>
+                <th>Date</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr class="even-row buy">
+                <td>Apple Inc.</td>
+                <td>buy</td>
+                <td>10</td>
+                <td>150.00</td>
+                <td>1500.00</td>
+                <td>2023-01-15</td>
+            </tr>
+            <tr class="odd-row sell">
+                <td>Google</td>
+                <td>sell</td>
+                <td>5</td>
+                <td>2800.00</td>
+                <td>14000.00</td>
+                <td>2023-02-20</td>
+            </tr>
+            <tr class="even-row buy">
+                <td>Microsoft</td>
+                <td>buy</td>
+                <td>8</td>
+                <td>300.00</td>
+                <td>2400.00</td>
+                <td>2023-03-10</td>
+            </tr>
+            <tr class="odd-row sell">
+                <td>Amazon</td>
+                <td>sell</td>
+                <td>3</td>
+                <td>3500.00</td>
+                <td>10500.00</td>
+                <td>2023-04-05</td>
+            </tr>
+            <tr class="totals-row">
+                <td colspan="4">Total Original Value</td>
+                <td>28400.00</td>
+                <td></td>
+            </tr>
+        </tbody>
+    </table>
+
+    <script>
+        // Set current date
+        document.getElementById('current-date').textContent = new Date().toLocaleDateString();
+    </script>
+</body>
+</html>

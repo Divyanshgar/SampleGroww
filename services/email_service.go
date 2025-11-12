@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"html/template"
+	"io"
 	"notification-server/config"
 	"notification-server/models"
 	"strconv"
@@ -52,6 +53,47 @@ func (s *EmailService) SendUserProfileEmail(user *models.User) error {
 
 	if err := d.DialAndSend(m); err != nil {
 		return fmt.Errorf("failed to send email: %w", err)
+	}
+
+	return nil
+}
+
+// SendUserProfileEmailWithAttachment sends an email with user profile details and PDF attachment
+func (s *EmailService) SendUserProfileEmailWithAttachment(user *models.User, pdfBytes []byte) error {
+	// Create email template
+	emailBody, err := s.generateUserProfileHTML(user)
+	if err != nil {
+		return fmt.Errorf("failed to generate email template: %w", err)
+	}
+
+	// Create message
+	m := gomail.NewMessage()
+	m.SetHeader("From", fmt.Sprintf("%s <%s>", s.config.Email.FromName, s.config.Email.FromEmail))
+	m.SetHeader("To", user.Email)
+	m.SetHeader("Subject", "Welcome! Your User Profile Details with PDF")
+	m.SetBody("text/html", emailBody)
+
+	// Attach PDF
+	m.Attach("user_profile.pdf", gomail.SetCopyFunc(func(w io.Writer) error {
+		_, err := w.Write(pdfBytes)
+		return err
+	}))
+
+	// Send email
+	port, err := strconv.Atoi(s.config.Email.SMTPPort)
+	if err != nil {
+		return fmt.Errorf("invalid SMTP port: %w", err)
+	}
+
+	d := gomail.NewDialer(
+		s.config.Email.SMTPHost,
+		port,
+		s.config.Email.Username,
+		s.config.Email.Password,
+	)
+
+	if err := d.DialAndSend(m); err != nil {
+		return fmt.Errorf("failed to send email with attachment: %w", err)
 	}
 
 	return nil
